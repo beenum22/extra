@@ -27,11 +27,11 @@ class ZK(HydraBase):
 	def run_test(self):
 		"""
 		Function which actually runs
-    	"""
-    	# Get Mesos/Marathon client
-    	self.start_init()
-    	# Launch HelloWorld Pub
-    	self.launch_zk_pub()
+	    	"""
+    		# Get Mesos/Marathon client
+    		self.start_init()
+    		# Launch HelloWorld Pub
+    		self.launch_zk_pub()
 
 	def launch_zk_pub(self):
 		"""
@@ -65,8 +65,8 @@ class RunTest(object):
 #        z.zkpa.do_req('create', tout_60s, arg1=num_msgs)
         
         
-		z.delete_all_launched_apps()
-		z.stop_appserver()        
+	z.delete_all_launched_apps()
+	z.stop_appserver()        
         
 if __name__ == "__main__":
     RunTest(sys.argv)        
