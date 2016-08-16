@@ -9,80 +9,89 @@ from ConfigParser import ConfigParser
 from hydra.lib.h_analyser import HAnalyser
 tout_60s = 60000
 
-class ZkPubAnalyser(HAnalyser):
+
+
+class ZKPubAnalyser(HAnalyser):
 	def __init__(self, server_ip, server_port, task_id):
 		HAnalyser.__init__(self, server_ip, server_port, task_id)
-        
+
+
 class ZK(HydraBase):
-	def __init__(self):	#pub_port in arguments before
+	def __init__(self,client_count, num_msgs):
 		self.config = ConfigParser()
+
 		HydraBase.__init__(self, test_name='ZKstress', options=None, app_dirs=['src', 'hydra'])
-#		self.pub_port = pub_port
+
+		self.client_count = client_count
+		self.num_msgs = num_msgs
+
 		self.zk_pub_app_id = self.format_appname("/zk-pub")
+
 		self.zk_pub_task_ip = None
+
 		self.zk_pub_cmd_port = None
-		self.zkpa = None
+
+		self.zkpa = None  # Pub Analyzer
+
 		self.add_appid(self.zk_pub_app_id)
-		
+
 	def run_test(self):
 		"""
 		Function which actually runs
-	    	"""
-    		# Get Mesos/Marathon client
-    		self.start_init()
-    		# Launch HelloWorld Pub
-    		self.launch_zk_pub()
+		"""
+        
+		self.start_init()
+
+		self.launch_zk_pub()
+
+		self.post_run()
+		
+		
+	def post_run():
+		task_list = self.all_task_ids[self.zk_pub_app_id]
+		print task_list
+		for task_id in task_list:
+			info = self.apps[self.zk_pub_app_id]['ip_port_map'][task_id]
+			port = info[0]
+			ip = info[1]
+
+			self.zkpa = ZKPubAnalyser(ip, port, task_id)
+			self.zkpa.do_req_resp('sendmsg', tout_60s, self.num_msgs)		
+		
+		
+		
 
 	def launch_zk_pub(self):
 		"""
-		Function to launch ZKStress pub app.
+		Function to launch helloWorld pub app.
 		"""
-		print ("Launching the ZKStress pub app")
-		self.create_binary_app(name=self.zk_pub_app_id, app_script='./src/zk_pub.py',
-								cpus=0.01, mem=32,
-								ports=[0])
-                               
-		ipm = self.get_app_ipport_map(self.zk_pub_app_id)
-		
-		assert (len(ipm) == 1)
-		self.zk_pub_task_ip = ipm.values()[0][1]                               
-		self.zk_pub_cmd_port = str(ipm.values()[0][0])                               
-        
-		print("[helloworldtest.zk_pub] ZKStress running at [%s:%s]" % (self.zk_pub_task_ip, self.zk_pub_cmd_port))
-		self.zkpa = ZKPubAnalyser(self.zk_pub_task_ip, self.zk_pub_cmd_port, self.zk_pub_app_id)
-        
-        
+		print ("Launching the HelloWorld pub app")
+		self.create_binary_app(name=self.zk_pub_app_id, app_script='./src/zk_stress.py',
+                               cpus=0.01, mem=32,
+                               ports=[0])
+
+
+		self.scale_and_verify_app(self.zk_pub_app_id, self.client_count)
+
 class RunTest(object):
 	def __init__(self, argv):
-#        pub_port = argv[1]
-        num_msgs = argv[1]
-        
-        z = ZK()		
-        z.start_appserver()
-        z.run_test()
-        
-        print ("Communicating create signal to pub")
-#        z.zkpa.do_req('create', tout_60s, arg1=num_msgs)
-        
-        
-	z.delete_all_launched_apps()
-	z.stop_appserver()        
-        
+		num_msgs = int(argv[1])
+		client_count = int(argv[2])
+ 
+
+		r = ZK(client_count,num_msgs)
+
+		r.start_appserver()
+
+		r.run_test()
+
+		print ("Communicating sendmsg signal to pub")
+
+
+        print ("About to sleep for 15")
+#       time.sleep(15)
+#        r.delete_all_launched_apps()
+		r.stop_appserver()
+
 if __name__ == "__main__":
-    RunTest(sys.argv)        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-                               
-                               
-                               
+	RunTest(sys.argv)
